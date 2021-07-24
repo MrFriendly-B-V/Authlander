@@ -76,6 +76,7 @@ pub async fn main() -> std::io::Result<()> {
             .service(endpoints::session::describe::describe)
             .service(endpoints::token::get::get)
             .service(endpoints::user::scopes::scopes)
+            .service(endpoints::user::describe::describe)
             .default_service(actix_web::web::route().to(page_404))
     }).bind("0.0.0.0:8080")?.run().await
 }

@@ -27,7 +27,7 @@ pub async fn get(data: web::Data<AppData<Env, ExtraData>>, req: HttpRequest, web
         }
     };
 
-    match super::validate_access_token(&data, &access_token) {
+    match crate::endpoints::validate_access_token(&data, &access_token) {
         Ok(true) => {},
         Ok(false) => return HttpResponse::Unauthorized().body(respond!("headers", "Provided access token is not authorized")),
         Err(e) => {
