@@ -15,6 +15,11 @@ rand = "0.8.4"
 serde_qs = "0.8.4"
 base64 = "0.13.0"
 chrono = "0.4.19"
+base32 = "0.4.0"
+anyhow = "1.0.43"
+sha2 = "0.9.6"
+hmac = "0.11.0"
+sha-1 = "0.9.8"
 
 [dependencies.log4rs]
 version = "1.0.0"
@@ -30,7 +35,8 @@ features = ["blocking", "json", "rustls-tls"]
 
 [dependencies.common_components]
 git = "https://github.com/TwinsightMedia/CommonComponents"
-branch = "master"
+tag = "0.1.0"
+
 
 [build-dependencies]
 include_dir = "0.6.1"

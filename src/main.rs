@@ -1,6 +1,7 @@
 mod env;
 mod endpoints;
 mod apis;
+mod totp;
 
 use crate::env::Env;
 use log::{info, error as log_error};
