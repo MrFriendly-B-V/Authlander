@@ -1,21 +1,21 @@
-use actix_web::{get, web, HttpRequest, HttpResponse};
+use actix_web::{get, web, HttpResponse};
 use mysql::{prelude::Queryable, params};
-use crate::env::Env;
-use common_components::{AppData, respond};
-use log::{info, warn};
+use crate::env::AppData;
+use std::sync::Arc;
 use serde::{Serialize, Deserialize};
 use rand::Rng;
-use crate::ExtraData;
+use crate::error::HttpResult;
 
 #[derive(Deserialize)]
-struct LoginQuery {
+pub struct LoginQuery {
+    #[allow(unused)]
     api_name:           String,
     return_uri:         String,
     requested_scopes:   Option<String>,
 }
 
 #[derive(Serialize)]
-struct GoogleLoginQuery<'a> {
+pub struct GoogleLoginQuery<'a> {
     client_id:              &'a str,
     redirect_uri:           &'a str,
     response_type:          &'static str,
@@ -31,41 +31,19 @@ const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const DEFAULT_SCOPES: &str = "openid profile email";
 
 #[get("/oauth2/login")]
-pub async fn login(data: web::Data<AppData<Env, ExtraData>>, req: HttpRequest) -> HttpResponse {
-    let login_query: LoginQuery = match serde_qs::from_str(req.query_string()) {
-        Ok(q) => q,
-        Err(e) => {
-            warn!("Failed to parse query parameters for GET /oauth2/login: {:?}", &e);
-            return HttpResponse::BadRequest().body(respond!("query", format!("{:?}", &e)))
-        }
-    };
-
-    info!("Got Oauth2 Login Request on GET /oauth2/login from API '{}'", &login_query.api_name);
-
+pub async fn login(data: web::Data<Arc<AppData>>, query: web::Query<LoginQuery>) -> HttpResult {
     let state: String = rand::thread_rng().sample_iter(rand::distributions::Alphanumeric).take(32).map(char::from).collect();
     let nonce: String = rand::thread_rng().sample_iter(rand::distributions::Alphanumeric).take(128).map(char::from).collect();
 
-    let mut conn = match data.get_conn() {
-        Ok(c) => c,
-        Err(e) => {
-            warn!("Failed to create MySQL Connection for GET /oauth2/login: {:?}", e);
-            return HttpResponse::InternalServerError().body(respond!("internal", "Internal error"));
-        }
-    };
+    let mut conn = data.pool.get_conn()?;
 
-    match conn.exec_drop("INSERT INTO states (state, nonce, redirect_uri) VALUES (:state, :nonce, :redirect_uri)", params! {
+    conn.exec_drop("INSERT INTO states (state, nonce, redirect_uri) VALUES (:state, :nonce, :redirect_uri)", params! {
         "state" => &state,
         "nonce" => &nonce,
-        "redirect_uri" => &login_query.return_uri
-    }) {
-        Ok(_) => {},
-        Err(e) => {
-            warn!("Failed to insert into table 'states' for GET /oauth2/login: {:?}", e);
-            return HttpResponse::InternalServerError().body(respond!("internal", "Internal error"));
-        }
-    }
+        "redirect_uri" => &query.return_uri
+    })?;
 
-    let scopes = if let Some(scopes) = login_query.requested_scopes {
+    let scopes = if let Some(scopes) = &query.requested_scopes {
         format!("{} {}", DEFAULT_SCOPES, scopes)
     } else {
         DEFAULT_SCOPES.to_string()
@@ -83,26 +61,13 @@ pub async fn login(data: web::Data<AppData<Env, ExtraData>>, req: HttpRequest) -
         nonce:                  &nonce,
     };
 
-    let query_params = match serde_qs::to_string(&google_query_params) {
-        Ok(qp) => qp,
-        Err(e) => {
-            warn!("Failed to serialize GoogleLoginQuery parameters to String in GET /oauth2/login: {:?}", e);
-            return HttpResponse::InternalServerError().body(respond!("internal", "Internal error"));
-        }
-    };
+    let query_params = serde_qs::to_string(&google_query_params)?;
     let redirect_uri = format!("{}?{}", GOOGLE_AUTH_URL, query_params);
 
     let mut ctx = tera::Context::new();
     ctx.insert("redirect_uri", &redirect_uri);
 
-    let body = match data.extra.as_ref().unwrap().tera.render("redirect.html", &ctx) {
-        Ok(b) => b,
-        Err(e) => {
-            warn!("Failed to render Tera template 'redirect.html' in GET /oauth2/login: {:?}", e);
-            return HttpResponse::InternalServerError().body(respond!("internal", "Internal error"));
-        }
-    };
-
-    HttpResponse::Ok().body(body)
+    let body = data.tera.render("redirect.html", &ctx)?;
+    Ok(HttpResponse::Ok().body(body))
 }
 

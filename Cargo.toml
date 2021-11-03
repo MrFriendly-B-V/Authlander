@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 actix-web = "3.3.2"
 actix-cors = "0.5.4"
-mysql = "21.0.1"
+actix-governor = "0.2.5"
 serde_json = "1.0.64"
 log = "0.4.14"
 tera = "1.12.1"
@@ -15,11 +15,9 @@ rand = "0.8.4"
 serde_qs = "0.8.4"
 base64 = "0.13.0"
 chrono = "0.4.19"
-base32 = "0.4.0"
 anyhow = "1.0.43"
-sha2 = "0.9.6"
-hmac = "0.11.0"
-sha-1 = "0.9.8"
+thiserror = "1.0.30"
+envy = "0.4.2"
 
 [dependencies.log4rs]
 version = "1.0.0"
@@ -33,10 +31,26 @@ features = ["derive"]
 version = "0.11.4"
 features = ["blocking", "json", "rustls-tls"]
 
-[dependencies.common_components]
-git = "https://github.com/TwinsightMedia/CommonComponents"
-tag = "0.1.0"
+[dependencies.refinery]
+version = "0.7.0"
+features = ["mysql-notls"]
 
+[dependencies.mysql]
+version = "21.0.2"
+default-features = false
+
+[patch.crates-io.mysql]
+git = "https://github.com/TheDutchMC/rust-mysql-simple"
+
+[patch.crates-io.refinery]
+git = "https://github.com/TheDutchMC/refinery"
+
+[patch.crates-io.refinery-core]
+git = "https://github.com/TheDutchMC/refinery"
 
 [build-dependencies]
 include_dir = "0.6.1"
+
+[profile.release]
+lto = true
+panic = "abort"

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use common_components::{Result, error};
+use anyhow::Result;
 use crate::env::Env;
 
 const GOOGLE_TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
@@ -23,30 +23,21 @@ pub struct ExchangeGrantTokenResponse {
 }
 
 pub fn exchange_grant_token(env: &Env, code: &str, redirect_uri: &str) -> Result<ExchangeGrantTokenResponse> {
-    let payload = match serde_json::to_string(&ExchangeGrantTokenRequest {
+    let payload = ExchangeGrantTokenRequest {
         client_id:      &env.google_client_id,
         client_secret:  &env.google_client_secret,
         code,
         grant_type:     "authorization_code",
         redirect_uri
-    }) {
-        Ok(p) => p,
-        Err(e) => return Err(error!(e, "Failed to serialize ExchangeGrantTokenRequest"))
     };
 
-    let response = match reqwest::blocking::Client::new()
+    let response: ExchangeGrantTokenResponse = reqwest::blocking::Client::new()
         .post(GOOGLE_TOKEN_ENDPOINT)
-        .body(payload)
-        .send() {
+        .json(&payload)
+        .send()?
+        .json()?;
 
-        Ok(r) => r,
-        Err(e) => return Err(error!(e, "Failed to send request"))
-    };
-
-    match response.json() {
-        Ok(rp) => Ok(rp),
-        Err(e) => Err(error!(e, "Failed to deserialize response payload"))
-    }
+    Ok(response)
 }
 
 #[derive(Serialize)]
@@ -65,27 +56,18 @@ pub struct ExchangeRefreshTokenResponse {
 }
 
 pub fn refresh_token(env: &Env, refresh_token: &str) -> Result<ExchangeRefreshTokenResponse> {
-    let payload = match serde_json::to_string(&ExchangeRefreshTokenRequest {
+    let payload = ExchangeRefreshTokenRequest {
         client_id:      &env.google_client_id,
         client_secret:  &env.google_client_secret,
         grant_type:     "refresh_token",
         refresh_token
-    }) {
-        Ok(p) => p,
-        Err(e) => return Err(error!(e, "Failed to serialize request payload"))
     };
 
-    let response = match reqwest::blocking::Client::new()
+    let response: ExchangeRefreshTokenResponse = reqwest::blocking::Client::new()
         .post(GOOGLE_TOKEN_ENDPOINT)
-        .body(payload)
-        .send() {
+        .json(&payload)
+        .send()?
+        .json()?;
 
-        Ok(r) => r,
-        Err(e) => return Err(error!(e, "Failed to send request"))
-    };
-
-    match response.json() {
-        Ok(rp) => Ok(rp),
-        Err(e) => Err(error!(e, "Failed to deserialize response payload"))
-    }
+    Ok(response)
 }

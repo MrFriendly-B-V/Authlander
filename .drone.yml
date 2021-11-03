@@ -1,0 +1,102 @@
+kind: pipeline
+type: docker
+name: build-latest
+
+trigger:
+  branch:
+  - master
+
+steps:
+- name: Build Docker
+  image: plugins/docker
+  settings:
+    repo: docker-registry.k8s.array21.dev/authlander
+    tags:
+    - latest
+    registry: docker-registry.k8s.array21.dev
+
+- name: Slack notifications
+  image: plugins/slack
+  settings:
+    webhook:
+      from_secret: discord_webhook
+    username: Drone CI/CD - Authlander - build-latest
+  when:
+    status: [ failure ]
+---
+kind: pipeline
+type: docker
+name: build-release
+
+trigger:
+  event:
+  - tag
+
+steps:
+- name: submodules
+  image: alpine/git
+  commands:
+  - git submodule update --init --recursive
+  
+- name: Build Docker
+  image: plugins/docker
+  settings:
+    repo: docker-registry.k8s.array21.dev/authlander
+    registry: docker-registry.k8s.array21.dev
+    tags:
+    - ${DRONE_TAG}
+    - latest
+
+- name: Deploy to Kubernetes
+  image: ubuntu:latest
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+    SSH_KEY:
+      from_secret: ssh_key
+    
+  commands:
+  - apt update && apt install -y openssh-client
+  
+  - mkdir -p $HOME/.ssh/
+  - eval `ssh-agent`
+  - echo "$SSH_KEY" | tr -d '\r' | ssh-add - > /dev/null
+
+  - rm -rf $HOME/.ssh/config
+  - touch $HOME/.ssh/config
+  - echo "Host *\n\tStrictHostKeyChecking no" > $HOME/.ssh/config
+  
+  - "ssh droneci@kube-ssh.intern.array21.dev kubectl set image -n mrfriendly deployment/authlander authlander=docker-registry.k8s.array21.dev/authlander:${DRONE_TAG}"
+
+- name: Slack notifications
+  image: plugins/slack
+  settings:
+    webhook:
+      from_secret: discord_webhook
+    username: Drone CI/CD - Authlander - build-release
+  when:
+    status: [ failure ]
+---
+kind: pipeline
+type: docker
+name: build-and-test
+
+trigger:
+  event:
+  - pull_request
+  - push
+
+steps:
+- name: Cargo
+  image: rust:1.56.1-bullseye
+  commands:
+  - cargo build
+  - cargo test
+
+- name: Slack notifications
+  image: plugins/slack
+  settings:
+    webhook:
+      from_secret: discord_webhook
+    username: Drone CI/CD - Authlander - build-and-test
+  when:
+    status: [ failure ]
