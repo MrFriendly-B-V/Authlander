@@ -8,6 +8,7 @@ RUN rustup target add x86_64-unknown-linux-musl
 
 COPY ./src /usr/src/authlander/src/
 COPY ./Cargo.toml /usr/src/authlander
+COPY ./migrations /usr/src/authlander/migrations/
 WORKDIR /usr/src/authlander/
 RUN cargo build --release --target x86_64-unknown-linux-musl
 
