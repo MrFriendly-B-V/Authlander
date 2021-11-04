@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use actix_web::{web, get, HttpResponse, HttpRequest};
 use mysql::prelude::Queryable;
-use mysql::{Row, params, PooledConn};
+use mysql::{Row, Params, PooledConn};
 use crate::env::AppData;
 use crate::error::{HttpResult, Error};
 use crate::check_token;
