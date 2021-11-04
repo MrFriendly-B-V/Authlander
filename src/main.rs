@@ -10,6 +10,7 @@ use std::process::exit;
 use std::sync::Arc;
 use actix_governor::GovernorConfigBuilder;
 use actix_web::http::Method;
+use actix_web::middleware::normalize::TrailingSlash;
 
 #[actix_web::main]
 pub async fn main() -> std::io::Result<()> {
@@ -62,6 +63,7 @@ pub async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(actix_cors::Cors::permissive())
             .wrap(Logger::default())
+            .wrap(actix_web::middleware::NormalizePath::new(TrailingSlash::Trim))
             .wrap(actix_governor::Governor::new(&regular_governor))
             .wrap(actix_governor::Governor::new(&options_governor))
             .data(appdata_arc.clone())
@@ -73,6 +75,7 @@ pub async fn main() -> std::io::Result<()> {
             .service(endpoints::user::scopes::scopes)
             .service(endpoints::user::describe::describe)
             .service(endpoints::user::exists::exists)
+            .service(endpoints::user::list::list)
             .default_service(actix_web::web::route().to(page_404))
     }).bind("0.0.0.0:8080")?.run().await
 }
