@@ -8,8 +8,6 @@ use actix_web::{HttpServer, App};
 use actix_web::middleware::Logger;
 use std::process::exit;
 use std::sync::Arc;
-use actix_governor::GovernorConfigBuilder;
-use actix_web::http::Method;
 use actix_web::middleware::normalize::TrailingSlash;
 
 #[actix_web::main]
@@ -44,28 +42,11 @@ pub async fn main() -> std::io::Result<()> {
     }
 
     let appdata_arc = Arc::new(appdata);
-
-    let regular_governor = GovernorConfigBuilder::default()
-        .methods(vec![Method::GET, Method::POST])
-        .per_second(5)
-        .burst_size(20)
-        .finish()
-        .unwrap();
-
-    let options_governor = GovernorConfigBuilder::default()
-        .methods(vec![Method::OPTIONS])
-        .per_second(20)
-        .burst_size(50)
-        .finish()
-        .unwrap();
-
     HttpServer::new(move || {
         App::new()
             .wrap(actix_cors::Cors::permissive())
             .wrap(Logger::default())
             .wrap(actix_web::middleware::NormalizePath::new(TrailingSlash::Trim))
-            .wrap(actix_governor::Governor::new(&regular_governor))
-            .wrap(actix_governor::Governor::new(&options_governor))
             .data(appdata_arc.clone())
             .service(endpoints::oauth2::login::login)
             .service(endpoints::oauth2::grant::grant)
