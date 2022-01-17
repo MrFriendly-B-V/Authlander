@@ -12,7 +12,11 @@ use actix_web::middleware::normalize::TrailingSlash;
 
 #[actix_web::main]
 pub async fn main() -> std::io::Result<()> {
-    log4rs::init_file("./log4rs.yaml", Default::default()).expect("Failed to initialize logger");
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "INFO");
+    }
+    env_logger::init();
+
     info!("Starting Authlander Server");
 
     debug!("Reading environment");

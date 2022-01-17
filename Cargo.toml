@@ -17,10 +17,7 @@ chrono = "0.4.19"
 anyhow = "1.0.43"
 thiserror = "1.0.30"
 envy = "0.4.2"
-
-[dependencies.log4rs]
-version = "1.0.0"
-features = ["console_appender"]
+env_logger = "0.9.0"
 
 [dependencies.serde]
 version = "1.0.126"
@@ -32,21 +29,13 @@ default-features = false
 features = ["blocking", "json", "rustls-tls"]
 
 [dependencies.refinery]
-version = "0.7.0"
-features = ["mysql-notls"]
+version = "0.8.4"
+default-features = false
+features = ["mysql"]
 
 [dependencies.mysql]
-version = "21.0.2"
+version = "22.0.0"
 default-features = false
-
-[patch.crates-io.mysql]
-git = "https://github.com/TheDutchMC/rust-mysql-simple"
-
-[patch.crates-io.refinery]
-git = "https://github.com/TheDutchMC/refinery"
-
-[patch.crates-io.refinery-core]
-git = "https://github.com/TheDutchMC/refinery"
 
 [build-dependencies]
 include_dir = "0.6.1"
